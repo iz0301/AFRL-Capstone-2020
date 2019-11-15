@@ -11,6 +11,46 @@ import random
 import time
 
 class ImageDataset(Dataset):
+    def __init__(self, root_dir, img_size=[300,300]):
+        self.root_dir = root_dir
+        all_files = os.listdir(root_dir)
+        self.img_files = []
+        self.defect_maps = []
+        for f in all_files:
+            if not f.endswith('_defects.jpg'):
+                self.img_files.append(f)
+                self.defect_maps.append(f[0:-4] + '_defects.jpg')
+        self.img_size = img_size
+
+    def __len__(self):
+        return len(self.img_files)
+
+    def __getitem__(self, idx):
+        img = io.imread(self.root_dir + os.path.sep + self.img_files[idx])
+        defect = io.imread(self.root_dir + os.path.sep + self.defect_maps[idx])
+
+        defect = [((i * -1) + 255) for i in defect]
+        defect = np.asarray(defect, dtype=np.uint8)
+        img = TF.to_pil_image(img)
+        img = TF.to_grayscale(img)
+        defect = TF.to_pil_image(defect)
+        defect = TF.to_grayscale(defect)
+
+        if random.random() > 0.5:
+            img = TF.hflip(img)
+            defect = TF.hflip(defect)
+
+        # Random vertical flipping
+        if random.random() > 0.5:
+            img = TF.vflip(img)
+            defect = TF.vflip(defect)
+
+        img = TF.to_tensor(img)
+        defect = TF.to_tensor(defect)
+    #    defect = (defect * 2) - 1
+        return img, defect
+
+class ImageTransformDataset(Dataset):
     # TODO:  Add transforms to modify the images for a bigger dataset
     # but do the actually coputation of transform when you get item
     # # TODO: Also load the corresponding map of the defects and
@@ -47,6 +87,7 @@ class ImageDataset(Dataset):
 #            st = time.time()
             # Inital trainsforms for both image and defect map
             img = TF.to_pil_image(img)
+            img = TF.to_grayscale(img)
             defect = TF.to_pil_image(defect)
             defect = TF.to_grayscale(defect)
 
@@ -85,7 +126,7 @@ class ImageDataset(Dataset):
 #            st = time.time()
 
             # Color jitter the test image
-            img = self.color_jitter(img)
+            #img = self.color_jitter(img)
 
             # See if we have any defect in the defect map
             min_pix = defect.getextrema()[0]
