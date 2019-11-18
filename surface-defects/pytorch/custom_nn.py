@@ -17,7 +17,7 @@ class ImageDataset(Dataset):
         self.img_files = []
         self.defect_maps = []
         for f in all_files:
-            if not f.endswith('_defects.jpg'):
+            if not f.endswith('_defects.jpg') and f.endswith('.jpg'):
                 self.img_files.append(f)
                 self.defect_maps.append(f[0:-4] + '_defects.jpg')
         self.img_size = img_size
@@ -136,6 +136,122 @@ class ImageTransformDataset(Dataset):
         img = TF.to_tensor(img)
         defect = TF.to_tensor(defect)
         return img, defect
+
+class filter_network(nn.Module):
+
+    def __init__(self, im_size):
+        super(filter_network,self).__init__()
+        """
+        self.f1 = nn.Conv2d(im_size[2], 1, 3, 1, 1)
+        self.f2 = nn.ConvTranspose2d(30, 1, 3, 1, 1)
+
+        self.e1 = nn.Conv2d(im_size[2], 10, 3, 1, 1)
+        self.e2 = nn.Conv2d(10, 20, 3, 1, 1)
+        self.e3 = nn.Conv2d(20, 40, 3, 1, 1)
+        self.e4 = nn.Conv2d(40, 80, 3, 1, 1)
+        self.e5 = nn.Conv2d(80, 160, 3, 1, 1)
+        self.e6 = nn.Conv2d(160, 320, 3, 1, 1)
+        self.e7 = nn.Conv2d(320, 640, 3, 1, 1)
+        self.e8 = nn.Conv2d(640, 1280, 3, 1, 1)
+        self.d1 = nn.ConvTranspose2d(1280, 640, 3, 1, 1)
+        self.d2 = nn.ConvTranspose2d(640, 320, 3, 1, 1)
+        self.d3 = nn.ConvTranspose2d(320, 160, 3, 1, 1)
+        self.d4 = nn.ConvTranspose2d(160, 80, 3, 1, 0)
+        self.d5 = nn.ConvTranspose2d(80, 40, 3, 1, 1)
+        self.d6 = nn.ConvTranspose2d(40, 20, 3, 1, 1)
+        self.d7 = nn.ConvTranspose2d(20, 10, 3, 1, 1)
+        self.d8 = nn.ConvTranspose2d(10, 5, 3, 1, 1)
+        self.d9 = nn.ConvTranspose2d(5, 1, 3, 1, 1)
+
+        nn.init.normal_(self.e1.weight)
+        nn.init.normal_(self.e2.weight)
+        nn.init.normal_(self.e3.weight)
+        nn.init.normal_(self.e4.weight)
+        nn.init.normal_(self.e5.weight)
+        nn.init.normal_(self.e6.weight)
+        nn.init.normal_(self.e7.weight)
+        nn.init.normal_(self.e8.weight)
+        nn.init.normal_(self.d1.weight)
+        nn.init.normal_(self.d2.weight)
+        nn.init.normal_(self.d3.weight)
+        nn.init.normal_(self.d4.weight)
+        nn.init.normal_(self.d5.weight)
+        nn.init.normal_(self.d6.weight)
+        nn.init.normal_(self.d7.weight)
+        nn.init.normal_(self.d8.weight)
+        nn.init.normal_(self.d9.weight)
+
+        self.mp = nn.MaxPool2d(2)
+        self.us = nn.Upsample(scale_factor=2)
+        self.act_func = nn.Tanh()
+        self.encoder = nn.Sequential(\
+        self.e1, self.act_func, self.mp, self.e2, self.act_func, self.mp, self.e3, self.act_func, self.mp, self.e4, self.act_func, self.mp, self.e5, self.act_func, self.mp, self.e6, self.act_func, self.mp, self.e7, self.act_func, self.mp, self.e8, self.act_func, self.mp)
+        self.decoder = nn.Sequential(\
+        self.d1, self.act_func, self.us, self.d2, self.act_func, self.us, self.d3, self.act_func, self.us, self.d4, self.act_func, self.us, self.d5, self.act_func, self.us, self.d6, self.act_func, self.us, self.d7, self.act_func, self.us, self.d8, self.act_func, self.us, self.d9)
+        #self.encoder = nn.Sequential(\
+        #self.e1, self.act_func, self.mp)
+        #self.decoder = nn.Sequential(\
+        #self.d8, self.act_func, self.us, self.d9, self.act_func)
+        """
+        e = []
+        d = []
+        self.mp = nn.MaxPool2d(2)
+        self.us = nn.Upsample(scale_factor=2)
+        self.act_func = nn.Tanh()
+        e.append(nn.Sequential(\
+            nn.Conv2d(1, 10, 3, 1, 1),\
+            self.act_func,\
+            self.mp\
+            ))
+        self.add_module("e"+str(-1), e[-1])
+        l_out = 10
+        nl = 1
+        for i in range(nl):
+            l_in = l_out
+            l_out = l_in * 2
+            e.append(nn.Sequential(\
+                nn.Conv2d(l_in, l_out, 3, 1, 1),\
+                self.act_func,\
+                self.mp\
+                ))
+            self.add_module("e"+str(i), e[-1])
+
+        for i in range(nl):
+            l_in = l_out
+            l_out = round(l_in / 2)
+            d.append(nn.Sequential(\
+                self.us,\
+                nn.ConvTranspose2d(l_in*2, l_out, 3, 1, 1),\
+                self.act_func\
+                ))
+            self.add_module("d"+str(i), d[-1])
+        d.append(nn.Sequential(\
+            self.us,\
+            nn.ConvTranspose2d(l_out*2, 1, 3, 1, 1),\
+            self.act_func\
+            ))
+        self.add_module("d"+str(i+1), d[-1])
+        self.e = e
+        self.d = d
+
+    def forward(self, x):
+        y = []
+        i = -1
+        for conv in self.e:
+            i = i + 1
+            x = conv(x)
+            y.append(x)
+
+
+        for deconv in self.d:
+            x = torch.cat((y[i], x), dim=1) # dim = 2?
+            x = deconv(x)
+            i = i - 1
+        return x
+
+    def get_features(self, x):
+        x = self.l1(x)
+        return x
 
 class Autoencoder(nn.Module):
     """
