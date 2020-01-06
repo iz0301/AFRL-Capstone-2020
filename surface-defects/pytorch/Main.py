@@ -24,7 +24,7 @@ if device == 'cpu':
 data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/modified/filtered"
 num_epochs = 200
 batch_size = 10
-learning_rate = 0.002
+learning_rate = 0.001
 IMSZ = 320
 
 dataset = c.ImageDataset(data_dir, [IMSZ,IMSZ])

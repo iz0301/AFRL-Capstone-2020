@@ -43,7 +43,7 @@ fim3.set_cmap('Greys')
 plt.draw()
 plt.pause(1)
 
-model = torch.load("./surface-defects/pytorch/autoencoder.nn")
+model = torch.load("./surface-defects/pytorch/autoencoder_l1.nn")
 model = model.to(device)
 
 for batch_num, (img, defect) in enumerate(dataloader):
@@ -53,6 +53,7 @@ for batch_num, (img, defect) in enumerate(dataloader):
     print("going to run model")
     # ===================forward=====================
     output = model.forward(img)
+    output = output > 0.1
     print("got output")
     # ===================backward====================
     for i in range(10):
@@ -60,7 +61,7 @@ for batch_num, (img, defect) in enumerate(dataloader):
         fim2.set_data(np.squeeze(output[i].detach().cpu().numpy().transpose(1,2,0)))
         fim3.set_data(np.squeeze(defect[i].detach().cpu().numpy().transpose(1,2,0)))
         plt.draw()
-        plt.pause(10)
+        plt.pause(3)
 
 print("done")
 plt.pause(100)

@@ -205,7 +205,8 @@ class filter_network(nn.Module):
             ))
         self.add_module("e"+str(-1), e[-1])
         l_out = 10
-        nl = 1
+        nl = 0
+        i = 0
         for i in range(nl):
             l_in = l_out
             l_out = l_in * 2
@@ -379,6 +380,7 @@ class ConvolutionalNN(nn.Module):
         6 - max pool padding
     flat_layers = n by 1 where n is nubmer layers and value is nodes per layer
     n_output = number of output neurons
+    activationFunc = activation function to use
     """
     def __init__(self, input_size, conv_layers, flat_layers, n_output, activationFunc):
         super(ConvolutionalNN,self).__init__()
@@ -426,4 +428,19 @@ class ConvolutionalNN(nn.Module):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
+        return x
+
+    def init_weights(self, mode):
+        for i in range(len(self.layers)):
+            if hasattr(self.layers[i],'weight'):
+                for w in range(len(self.layers[i].weight)):
+                    try:
+                        mode(self.layers[i].weight[w])
+                    except:
+                        pass
+
+
+    def get_features(self, x, num_layer):
+        for i in range(num_layer):
+            x = self.layers[i](x)
         return x
