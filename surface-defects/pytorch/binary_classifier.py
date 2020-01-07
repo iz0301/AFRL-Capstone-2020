@@ -17,6 +17,7 @@ from custom_nn import ConvolutionalNN
 from torchvision.datasets import ImageFolder
 import math
 from image_segmentation import SegmentedImage
+import gc
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -27,8 +28,8 @@ if device == 'cpu':
 
 data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted"
 #data_dir = ""/home/isaac/Python/pytorch/datasets/mnist_png/testing"
-num_epochs = 100
-batch_size = 50
+num_epochs = 75
+batch_size = 25
 learning_rate = 0.0008
 #IMSZ = 28
 IMSZ = 150
@@ -50,9 +51,9 @@ pre_filter = nn.Conv2d(in_channels=3, out_channels=3, kernel_size=3, bias=False)
 pre_filter.weight.data = pre_filter_weights
 pre_filter.weight.requires_grad = False
 
-cnn = ConvolutionalNN([IMSZ, IMSZ, 3], conv_layers, np.asarray([1000,100,50]), 2, nn.RReLU)
+cnn = ConvolutionalNN([IMSZ, IMSZ, 3], conv_layers, np.asarray([1000,100,50]), 1, nn.RReLU)
 cnn.init_weights(nn.init.calculate_gain)
-model = nn.Sequential(pre_filter, cnn, nn.Softmax())
+model = nn.Sequential(pre_filter, cnn, nn.Sigmoid())
 
 
 # Print number of paraemters
@@ -66,7 +67,7 @@ optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate,weight_decay=0.
 # CHANGE weights based on data skew [399,601]
 num_no_defect = 387;
 num_defect = 588;
-lossFunc = nn.CrossEntropyLoss(weight=torch.FloatTensor([num_no_defect, num_defect])).to(device)
+lossFunc = nn.BCELoss().to(device)
 
 losses = []
 for epoch in range(num_epochs):
@@ -84,21 +85,22 @@ for epoch in range(num_epochs):
         output = model(img)
         #print("got output")
 
-        loss = lossFunc(output, target)
+        loss = lossFunc(output, target.float())
         # ===================backward====================
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        _, predicted = torch.max(output.data, 1)
+        predicted = torch.round(torch.transpose(output,1,0))
         batchCorrect = (predicted == target).sum()
+
         num_guess_none = num_guess_none + (predicted == 1).sum()
         totalCorrect = totalCorrect + batchCorrect
         #print(predicted)
         #print(target)
     end_time = time.time()
 
-    print("Training accuracy: " + str(round(totalCorrect.cpu().numpy()/(batch_size*(batch_num+1))*100,2)))
+    print("Training accuracy: " + str(round(totalCorrect.cpu().numpy()/len(dataset)*10000)/100))
     losses.append(loss.detach().cpu().numpy())
 
 # Now test:
@@ -117,7 +119,7 @@ if do_test:
         # ===================forward=====================
         output = model(img)
 
-        _, predicted = torch.max(output.data, 1)
+        predicted = torch.round(torch.transpose(output,1,0))
         batchCorrect = (predicted == target).sum()
         num_guess_none = num_guess_none + (predicted == 1).sum()
         totalCorrect = totalCorrect + batchCorrect
@@ -127,38 +129,36 @@ if do_test:
     test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/IMG_1278.jpg"
     timg = io.imread(test_img, as_gray=True)
     total_size = timg.shape
-    total_map = torch.zeros(total_size)
+    total_map = torch.zeros(total_size, device=device)
 
-    map = torch.zeros([IMSZ,IMSZ])
-    map2 = torch.zeros(total_size)
-
-    map = Variable(map).to(device)
-    map2 = Variable(map2).to(device)
-    total_map = Variable(total_map).to(device)
     all_predictions = np.array([])
 
     dataset = SegmentedImage(test_img, step=150, out_size=[IMSZ, IMSZ])
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=5)
     total_num_b = len(dataset) / batch_size
     for batch_num, (img, coord_x, coord_y) in enumerate(dataloader):
+
         img = Variable(img).to(device)
         output = model(img)
-        _, predicted = torch.max(output.data, 1)
+        del img
+        predicted = torch.transpose(output,1,0)
+        del output
 
-        predicted[predicted == 0] = -1
+        #predicted[predicted == 0] = -1
         #predicted = predicted.cpu().numpy()
 
-        #all_predictions = np.append(all_predictions, predicted.cpu().numpy())
+        #all_predictions = np.append(all_predictions, predicted.copy().det)
         # This loop below is slow
         #print("Looping...")
-        start_time = time.time()
+
         for i in range(len(coord_x)):
             c = [coord_x[i], coord_y[i]]
-            map = torch.ones([IMSZ,IMSZ], device=device) * predicted[i]
+            map = torch.ones([IMSZ,IMSZ], device=device) * predicted[:,i]
             #print("coord: " + str(c[0]) + ", " + str(c[1]))
             # These two are the slowest:
-            map2 = torch.nn.functional.pad(map, (c[1], total_size[1] - c[1] - IMSZ, c[0], total_size[0] - c[0] - IMSZ))
-            total_map = total_map + map2
+
+            map = torch.nn.functional.pad(map, (c[1], total_size[1] - c[1] - IMSZ, c[0], total_size[0] - c[0] - IMSZ))
+            total_map += map
         #print("show")
         #imshow(total_map)
         #plt.gray()
@@ -172,22 +172,25 @@ if do_test:
         #map = np.ones([IMSZ,IMSZ,batch_size]) * predicted
         #padded_map = np.zeros(total_size)
         #padded_map[]
+
+        del predicted
+        del map
+
         print("Finished batch " + str(batch_num) + " of " + str(total_num_b))
     print("show")
     f = plt.figure(1)
-    imshow(total_map)
+    imshow(total_map.cpu().detach().numpy())
     plt.gray()
     print("shd")
     f.show()
 
-    """
-    plt.figure(2)
+    """plt.figure(2)
     for i in range(len(dataset)):
         imshow(np.swapaxes(dataset[i][0].numpy(), 0, 2))
         print("Predicted: " + str(all_predictions[i]))
         plt.gray()
         plt.show()
-        """
+    """
     plt.show()
     print("done")
 """
