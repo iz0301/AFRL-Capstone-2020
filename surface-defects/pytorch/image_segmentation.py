@@ -29,7 +29,7 @@ class SegmentedImage(Dataset):
         coords = [math.floor(((idx * step) % (in_size[0] - (out_size[0] - 1))) / step) * step, step * math.floor((idx * step) / (in_size[0] - (out_size[0] - 1)))];
 
         img = TF.to_pil_image(img)
-        img = TF.to_grayscale(img,num_output_channels=3)
+        img = TF.to_grayscale(img,num_output_channels=1)
 
         img = TF.crop(img, coords[0], coords[1], out_size[0], out_size[1])
 

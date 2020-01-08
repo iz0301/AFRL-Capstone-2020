@@ -8,13 +8,15 @@ from torchvision import transforms
 import torchvision.transforms.functional as TF
 import random
 import time
+from matplotlib.pyplot import imshow
+import matplotlib.pyplot as plt
 
 
-num_imgs = 1000
+num_imgs = 100
 img_size = [150, 150]
 path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/"
 img = "IMG_1278" # Without extension
-out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted"
+out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted_test"
 
 og_img = io.imread(path + os.path.sep + img + ".jpg")
 og_defect = io.imread(path + os.path.sep + img + "_defects.jpg")
@@ -87,10 +89,11 @@ for i in range(num_imgs):
         img = TF.to_tensor(img)
         defect = TF.to_tensor(defect)
         tries = tries + 1
+    # SAVE AS PNG! jpg has losses and it looks bad when it is loaded again later
     if defective: # If we have defects
-        torchvision.utils.save_image(img, out_dir + "/defect/" + str(i) + ".jpg")
+        torchvision.utils.save_image(img, out_dir + "/defect/" + str(i) + ".png")
         num_defects = num_defects + 1
     else: # if we dont
-        torchvision.utils.save_image(img, out_dir + "/no_defect/" + str(i) + ".jpg")
+        torchvision.utils.save_image(img, out_dir + "/no_defect/" + str(i) + ".png")
     print(str(round(i/num_imgs*100,2)) + "%", end='\r')
 print("Genearated " + str(num_imgs) + " images, " + str(num_defects) + " (" + str(num_defects/num_imgs*100) + "%) had defects.")

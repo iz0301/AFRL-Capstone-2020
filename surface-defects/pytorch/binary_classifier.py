@@ -35,7 +35,7 @@ learning_rate = 0.0008
 IMSZ = 150
 do_test = True
 
-dataset = ImageFolder(data_dir,  transform = transforms.Compose([transforms.ToTensor()]))
+dataset = ImageFolder(data_dir,  transform = transforms.Compose([transforms.Grayscale(), transforms.ToTensor()]))
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
 
 
@@ -46,14 +46,15 @@ for i in range(len(conv)):
 
 pre_filter_weights = [[-5, -10, -5], [-10, 60, -10], [-5, -10, -5]];
 pre_filter_weights = torch.FloatTensor(pre_filter_weights)
-pre_filter_weights = pre_filter_weights.repeat(3, 3, 1, 1)
-pre_filter = nn.Conv2d(in_channels=3, out_channels=3, kernel_size=3, bias=False)
+pre_filter_weights = pre_filter_weights.repeat(1, 1, 1, 1)
+pre_filter = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, bias=False)
 pre_filter.weight.data = pre_filter_weights
-pre_filter.weight.requires_grad = False
+pre_filter.weight.requires_grad = True
 
-cnn = ConvolutionalNN([IMSZ, IMSZ, 3], conv_layers, np.asarray([1000,100,50]), 1, nn.RReLU)
+cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([1000,100,50]), 1, nn.RReLU)
 cnn.init_weights(nn.init.calculate_gain)
 model = nn.Sequential(pre_filter, cnn, nn.Sigmoid())
+#model = nn.Sequential(cnn, nn.Sigmoid())
 
 
 # Print number of paraemters
@@ -75,7 +76,6 @@ for epoch in range(num_epochs):
     totalCorrect = 0
     num_guess_none = 0
     for batch_num, (img, target) in enumerate(dataloader):
-
         start_time = time.time()
         #print("Between batches took " + str(time.time() - end_time))
         img = Variable(img).to(device)
@@ -107,7 +107,7 @@ for epoch in range(num_epochs):
 if do_test:
     test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted_test"
 
-    dataset = ImageFolder(data_dir,  transform = transforms.Compose([transforms.ToTensor()]))
+    dataset = ImageFolder(data_dir,  transform = transforms.Compose([ transforms.Grayscale(), transforms.ToTensor()]))
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
 
     totalCorrect = 0
@@ -123,6 +123,8 @@ if do_test:
         batchCorrect = (predicted == target).sum()
         num_guess_none = num_guess_none + (predicted == 1).sum()
         totalCorrect = totalCorrect + batchCorrect
+
+
     print("test acc:" + str(round(totalCorrect.cpu().numpy()/(batch_size*(batch_num+1))*100,2)))
 
 # Now do segmneted test:
@@ -140,7 +142,6 @@ if do_test:
 
         img = Variable(img).to(device)
         output = model(img)
-        del img
         predicted = torch.transpose(output,1,0)
         del output
 
@@ -159,6 +160,12 @@ if do_test:
 
             map = torch.nn.functional.pad(map, (c[1], total_size[1] - c[1] - IMSZ, c[0], total_size[0] - c[0] - IMSZ))
             total_map += map
+
+            #imshow(np.squeeze(img.cpu().detach().numpy()[i]))
+            #print("Predicted: " + str(predicted[:,i]))
+            #plt.gray()
+            #plt.show()
+
         #print("show")
         #imshow(total_map)
         #plt.gray()
