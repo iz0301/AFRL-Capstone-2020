@@ -18,6 +18,7 @@ from torchvision.datasets import ImageFolder
 import math
 from image_segmentation import SegmentedImage
 import gc
+import sys
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -26,7 +27,7 @@ if device == 'cpu':
 #device = 'cpu'
 
 
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted"
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/sorted_training"
 #data_dir = ""/home/isaac/Python/pytorch/datasets/mnist_png/testing"
 num_epochs = 75
 batch_size = 25
@@ -105,7 +106,7 @@ for epoch in range(num_epochs):
 
 # Now test:
 if do_test:
-    test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted_test"
+    test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/sorted_test"
 
     dataset = ImageFolder(data_dir,  transform = transforms.Compose([ transforms.Grayscale(), transforms.ToTensor()]))
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
@@ -124,48 +125,63 @@ if do_test:
         num_guess_none = num_guess_none + (predicted == 1).sum()
         totalCorrect = totalCorrect + batchCorrect
 
-
+    del img
+    del target
+    del output
+    del predicted
     print("test acc:" + str(round(totalCorrect.cpu().numpy()/(batch_size*(batch_num+1))*100,2)))
 
 # Now do segmneted test:
-    test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/IMG_1278.jpg"
+    test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/paper_test.png"
     timg = io.imread(test_img, as_gray=True)
     total_size = timg.shape
-    total_map = torch.zeros(total_size, device=device)
 
+    total_map = torch.zeros(total_size, dtype=torch.float16, device=device)
+    map1 = torch.zeros([IMSZ,IMSZ], dtype=torch.float16, device=device)
+    map2 = torch.zeros(total_size, dtype=torch.float16, device=device)
+
+    img = torch.zeros([batch_size, 1, IMSZ, IMSZ], device=device)
+    output = torch.zeros([batch_size], device=device)
     all_predictions = np.array([])
 
-    dataset = SegmentedImage(test_img, step=150, out_size=[IMSZ, IMSZ])
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=5)
+    dataset = SegmentedImage(test_img, step=75, out_size=[IMSZ, IMSZ])
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=10)
     total_num_b = len(dataset) / batch_size
     for batch_num, (img, coord_x, coord_y) in enumerate(dataloader):
-
         img = Variable(img).to(device)
+        #model.to(device)
         output = model(img)
-        predicted = torch.transpose(output,1,0)
-        del output
-
+        #model.to('cpu')
         #predicted[predicted == 0] = -1
         #predicted = predicted.cpu().numpy()
 
         #all_predictions = np.append(all_predictions, predicted.copy().det)
         # This loop below is slow
         #print("Looping...")
-
         for i in range(len(coord_x)):
             c = [coord_x[i], coord_y[i]]
-            map = torch.ones([IMSZ,IMSZ], device=device) * predicted[:,i]
+            map1 = torch.ones([IMSZ,IMSZ], device=device) * output[i]
             #print("coord: " + str(c[0]) + ", " + str(c[1]))
             # These two are the slowest:
 
-            map = torch.nn.functional.pad(map, (c[1], total_size[1] - c[1] - IMSZ, c[0], total_size[0] - c[0] - IMSZ))
-            total_map += map
+            #map = Variable(map).to('cpu')
+            #print(id(map2))
+            ### Adding [:,:] helped memory things ?
+            map2 = torch.nn.functional.pad(map1, (c[1], total_size[1] - c[1] - IMSZ, c[0], total_size[0] - c[0] - IMSZ))
+            #map = map.to(device)
+            # HAVE TO .detach() to keep pytorch from recording gradients ! Memory issues otherwise
+            total_map = total_map + map2.detach()
 
+            #print("total_map: " + str(sys.getsizeof(output.element_size() * output.nelement())))
             #imshow(np.squeeze(img.cpu().detach().numpy()[i]))
             #print("Predicted: " + str(predicted[:,i]))
             #plt.gray()
             #plt.show()
-
+        del img
+        del output
+        del map1
+        del map2
+        gc.collect()
         #print("show")
         #imshow(total_map)
         #plt.gray()
@@ -180,8 +196,6 @@ if do_test:
         #padded_map = np.zeros(total_size)
         #padded_map[]
 
-        del predicted
-        del map
 
         print("Finished batch " + str(batch_num) + " of " + str(total_num_b))
     print("show")

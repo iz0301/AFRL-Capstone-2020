@@ -12,14 +12,14 @@ from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
 
 
-num_imgs = 100
+num_imgs = 3000
 img_size = [150, 150]
-path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/"
-img = "IMG_1278" # Without extension
-out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/sorted_test"
+path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/"
+img = "paper_train" # Without extension
+out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/sorted_training"
 
-og_img = io.imread(path + os.path.sep + img + ".jpg")
-og_defect = io.imread(path + os.path.sep + img + "_defects.jpg")
+og_img = io.imread(path + os.path.sep + img + ".png")
+og_defect = io.imread(path + os.path.sep + img + "_defects.png")
 
 os.makedirs(out_dir + "/defect/", exist_ok=True)
 os.makedirs(out_dir + "/no_defect/", exist_ok=True)
@@ -30,7 +30,7 @@ for i in range(num_imgs):
     tries = 0
     defective = False
     clipped = False
-    while (not defective and tries < 8) or clipped:
+    while (not defective and tries < 2) or clipped:
         img = og_img.copy()
         defect = og_defect.copy()
 
