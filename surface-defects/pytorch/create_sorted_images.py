@@ -17,16 +17,16 @@ import matplotlib.pyplot as plt
 # The same datasets
 
 # How many images to generate and what size should they be
-num_imgs = 3000
+num_imgs = 100
 img_size = [150, 150]
 
 # Path pointing to the folder that contains the large image and the defect map of the image
 # The defect map should be pure black where the defects are and should be named IMG_NAME_defects.png
-path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/part/"
-img = "part_train" # Without extension
+path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/"
+img = "Isaac_2_crop" # Without extension
 
 # Where to save the output images
-out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/part/sorted_training"
+out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/test"
 
 # Load the original image and the defect map
 og_img = io.imread(path + os.path.sep + img + ".png")

@@ -18,6 +18,7 @@ import math
 from image_segmentation import SegmentedImage
 import gc
 import sys
+from show_defects import show_defects
 
 #### If a GPU is available its probably faster so use that. If it isnt go ahead and use CPU
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -28,8 +29,8 @@ if device == 'cpu':
 
 ### Set up parameters
 # Directory with training images sorted as data_dir/defect and data_dir/no_defect
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/part/sorted_training"
-num_epochs = 100
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/train"
+num_epochs = 20
 batch_size = 25
 learning_rate = 0.0008
 # Use square images with IMSZ width and height
@@ -37,10 +38,10 @@ IMSZ = 150
 do_test = True # If we want to test at the end
 
 # If we are testing, directory for testing data folders in same format as training data
-test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/sorted_test"
+test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/test"
 
 # if we are testing, this is a single large image to cut up and test on (like what we would do to find where defects are in a total image)
-test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/part/part_test.png"
+test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/Isaac_2_crop.png"
 
 
 #### Load in the data and convert it to a grayscale tensor
@@ -129,7 +130,7 @@ for epoch in range(num_epochs):
 if do_test:
 
     # Load testing data
-    dataset = ImageFolder(data_dir,  transform = transforms.Compose([ transforms.Grayscale(), transforms.ToTensor()]))
+    dataset = ImageFolder(test_dir,  transform = transforms.Compose([ transforms.Grayscale(), transforms.ToTensor()]))
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
 
     totalCorrect = 0
@@ -210,11 +211,7 @@ if do_test:
         print("Finished batch " + str(batch_num) + " of " + str(total_num_b))
 
     # Plot the output map of where defects might be on the large image (total_map)
-    f = plt.figure(1)
-    imshow(total_map.cpu().detach().numpy())
-    plt.gray()
-    f.show()
-    plt.show()
+    show_defects(timg, total_map.detach().cpu().numpy())
 
 # Below is how we could save the model if we wanted to stop part way through training or after we are done training
 """
