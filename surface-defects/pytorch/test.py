@@ -16,7 +16,7 @@ import torchvision.transforms.functional as TF
 from custom_nn import filter_network
 
 
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/modified/testing"
+data_dir = "/Users/isaaczachmann/Documents/AFRL-Capstone-2020/surface-defects/Defects/modified/testing/"
 IMSZ = 3024
 batch_size = 10
 
@@ -25,7 +25,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_worker
 
 device = 'cpu'
 test_img, test_defect = dataset[0]
-mdefect = io.imread("/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/modified/0_0_defects.jpg")
+mdefect = io.imread("~/Documents/AFRL-Capstone-2020/surface-defects/Defects/modified/testing/2_936.jpg")
 mdefect = TF.to_pil_image(mdefect)
 mdefect = TF.to_grayscale(mdefect)
 mdefect = TF.to_tensor(mdefect)
