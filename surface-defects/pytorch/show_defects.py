@@ -10,6 +10,7 @@ import random
 import time
 import matplotlib.pyplot as plt
 
+
 def show_defects(img, defect_map, threshold=0.5):
     f = plt.figure(1)
     plt.imshow(img, cmap="gray")

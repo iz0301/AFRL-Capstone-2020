@@ -33,6 +33,7 @@ data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defect
 num_epochs = 20
 batch_size = 25
 learning_rate = 0.0008
+n_classes = 3
 # Use square images with IMSZ width and height
 IMSZ = 150
 do_test = True # If we want to test at the end
@@ -69,7 +70,7 @@ pre_filter.weight.requires_grad = True # Let the filter weights change during tr
 # Use 3 fully connected layers and 1 output layer. Fully connected connected
 # layers have 1000, 100, then 50 nodes. Output layer has 1 node
 # Use random rectified linear unit as the activation function (see doc)
-cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([1000,100,50]), 3, nn.RReLU)
+cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([1000,100,50]), n_classes, nn.RReLU)
 cnn.init_weights(nn.init.calculate_gain) # Initialize wieghts
  # Add the pre filter + the convolutional nural network + sigmoid activation function to get the full model
  # Sigmoid activation makes output between -1 and 1
@@ -96,7 +97,6 @@ losses = []
 for epoch in range(num_epochs):
     end_time = time.time() # Keeping track of time if we want to show a progress bar or soemthing later
     totalCorrect = 0
-    num_guess_none = 0
     # loop through the data
     for batch_num, (img, target) in enumerate(dataloader):
         start_time = time.time()
@@ -118,7 +118,6 @@ for epoch in range(num_epochs):
         batchCorrect = (predicted == target).sum()
 
         # Keep running total of correct
-        num_guess_none = num_guess_none + (predicted == 1).sum()
         totalCorrect = totalCorrect + batchCorrect
 
     end_time = time.time()
