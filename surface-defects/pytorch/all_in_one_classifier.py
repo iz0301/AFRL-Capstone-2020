@@ -29,34 +29,39 @@ if device == 'cpu':
 
 ### Set up parameters
 # Directory with training images sorted as data_dir/defect and data_dir/no_defect
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/train"
-num_epochs = 20
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/training"
+num_epochs = 500
 batch_size = 25
-learning_rate = 0.0008
+learning_rate = 0.0005
 n_classes = 3
 # Use square images with IMSZ width and height
 IMSZ = 150
 do_test = True # If we want to test at the end
 
 # If we are testing, directory for testing data folders in same format as training data
-test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/test"
+# Also used for validation
+test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/testing"
 
 # if we are testing, this is a single large image to cut up and test on (like what we would do to find where defects are in a total image)
 test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/Isaac_2_crop.png"
 
 
-#### Load in the data and convert it to a grayscale tensor
+#### Load in the training data and convert it to a grayscale tensor
 dataset = ImageFolder(data_dir,  transform = transforms.Compose([transforms.Grayscale(), transforms.ToTensor()]))
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
 
+#### Load in the validation data and convert it to a grayscale tensor
+val_dataset = ImageFolder(test_dir,  transform = transforms.Compose([transforms.Grayscale(), transforms.ToTensor()]))
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=5)
+
 ### Set up our model
  # Number of channels for each convolutional layer, and length of list is how many convolutional layers
-conv = [10,30,90,180]
+conv = [20,40,80,160,320,640]
 conv_layers = np.empty([len(conv),7])
 for i in range(len(conv)):
     # Set up convolutional layers and maxpool layers based on the list above and also use:
-    # kernel_size=5, stride=1, padding=0, max_pool_kernel=2, max_pool_stride=2, max_pool_padding=0
-    conv_layers[i] = [conv[i], 5, 1, 0, 2, 2, 0]
+    # kernel_size=3, stride=1, padding=0, max_pool_kernel=2, max_pool_stride=2, max_pool_padding=0
+    conv_layers[i] = [conv[i], 3, 1, 0, 2, 2, 1]
 
 ### Set up a pre_filter that made defects easier to see visually
 pre_filter_weights = [[-5, -10, -5], [-10, 60, -10], [-5, -10, -5]];
@@ -70,7 +75,7 @@ pre_filter.weight.requires_grad = True # Let the filter weights change during tr
 # Use 3 fully connected layers and 1 output layer. Fully connected connected
 # layers have 1000, 100, then 50 nodes. Output layer has 1 node
 # Use random rectified linear unit as the activation function (see doc)
-cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([1000,100,50]), n_classes, nn.RReLU)
+cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([5000,500,50]), n_classes, nn.RReLU)
 cnn.init_weights(nn.init.calculate_gain) # Initialize wieghts
  # Add the pre filter + the convolutional nural network + sigmoid activation function to get the full model
  # Sigmoid activation makes output between -1 and 1
@@ -97,6 +102,7 @@ losses = []
 for epoch in range(num_epochs):
     end_time = time.time() # Keeping track of time if we want to show a progress bar or soemthing later
     totalCorrect = 0
+    val_totalCorrect = 0
     # loop through the data
     for batch_num, (img, target) in enumerate(dataloader):
         start_time = time.time()
@@ -106,7 +112,7 @@ for epoch in range(num_epochs):
         target = Variable(target).to(device)
         # ===================forward=====================
         output = model(img) # Get output
-        loss = lossFunc(output, target.float()) # calculate loss
+        loss = lossFunc(output, target.long()) # calculate loss
         # ===================backward====================
         optimizer.zero_grad() # Clear old gradients
         loss.backward() # Calculate new gradients
@@ -120,8 +126,26 @@ for epoch in range(num_epochs):
         # Keep running total of correct
         totalCorrect = totalCorrect + batchCorrect
 
+    ### Validate model
+    for batch_num, (img, target) in enumerate(val_dataloader):
+        # Put the data onto gpu/cpu
+        img = Variable(img).to(device)
+        target = Variable(target).to(device)
+        # ===================forward=====================
+        output = model(img) # Get output
+        _, predicted = torch.max(output, 1)
+        batchCorrect = (predicted == target).sum()
+
+        # Keep running total of correct
+        val_totalCorrect = val_totalCorrect + batchCorrect
+
     end_time = time.time()
 
     # Print training accuracy each epoch end
     print("Training accuracy: " + str(round(totalCorrect.cpu().numpy()/len(dataset)*10000)/100))
+
+    # Print validation accuracy each epoch end
+    print("Validation accuracy: " + str(round(val_totalCorrect.cpu().numpy()/len(val_dataset)*10000)/100))
+
+    # Keep track of losses
     losses.append(loss.detach().cpu().numpy())

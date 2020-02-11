@@ -23,16 +23,19 @@ img_size = [150, 150]
 # Defects are looked for in this order so last should be no defect
 # 4th number is 1 for alpha values
 defect_colors = [[1,0,0,1],[0,1,0,1],[1,1,1,1]]
-defect_names = ["eraser","pencil","none"]
+defect_names = ["pencil","eraser","none"]
 no_defect_index = 2
+
+# prefix in case you generate images multiple times they wont overwrite eachother if they have different prefix
+prefix = "i2"
 
 # Path pointing to the folder that contains the large image and the defect map of the image
 # The defect map should be pure black where the defects are and should be named IMG_NAME_defects.png
-path = "/Users/isaaczachmann/Desktop/imgs/flash"
+path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/test_imgs/"
 img = "Isaac_2_crop" # Without extension
 
 # Where to save the output images
-out_dir = "/Users/isaaczachmann/Desktop/imgs/flash/test"
+out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/binary/testing/"
 
 # Load the original image and the defect map
 og_img = io.imread(path + os.path.sep + img + ".png")
@@ -96,6 +99,14 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
             img = TF.vflip(img)
             defect = TF.vflip(defect)
 
+        # If the input image contains a pure black it is (slmost certainly)
+        # from being cliped during rotation, which is bad
+        if img.getextrema()[0] == 0:
+            clipped = True
+        else:
+            clipped = False
+
+
         # See what type of defect we have
         for j, c in enumerate(defect_colors):
             # See how many pixels we match all 3 channels to the test color
@@ -104,16 +115,9 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
                 defect_type = j
                 break
         # Make sure we found a defect type
-        if defect_type == -1:
+        if defect_type == -1 and not clipped:
             raise Exception("Error: Could not determine type for image", img)
-
-        # If the input image contains a pure black it is (slmost certainly)
-        # from being cliped during rotation, which is bad
-        if img.getextrema()[0] == 0:
-            clipped = True
-        else:
-            clipped = False
-
+        
         # Convert the images to tensors (different format)
         img = TF.to_tensor(img)
         defect = TF.to_tensor(defect)
@@ -122,7 +126,7 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
 
     # Once we exit the while loop we are ready to save our image into the correct folder
     # SAVE AS PNG! jpg has losses and it looks bad when it is loaded again later
-    torchvision.utils.save_image(img, out_dir + os.sep + defect_names[defect_type] + os.sep + str(i) + ".png")
+    torchvision.utils.save_image(img, out_dir + os.sep + defect_names[defect_type] + os.sep + prefix + str(i) + ".png")
     num_defects[defect_type] = num_defects[defect_type] + 1
 
     # Print our progress

@@ -41,7 +41,7 @@ class ConvolutionalNN(nn.Module):
             layers.append(nn.Conv2d(in_channels, out_channels, kernel, stride, padding))
             layers.append(activationFunc())
 
-            # (𝑊−𝐹+2𝑃)/𝑆+1
+            # (W-F+2P)/S+1
             d_size[0] = math.floor((d_size[0] - kernel + 2*padding)/stride + 1)
             d_size[1] = math.floor((d_size[1] - kernel + 2*padding)/stride + 1)
 
@@ -50,9 +50,9 @@ class ConvolutionalNN(nn.Module):
             mp = int(conv_layers[c,6]) # max pool padding
             layers.append(nn.MaxPool2d(mk,ms,mp))
 
-            d_size[0] = math.floor((d_size[0] - mk + 2*mp)/ms + 1)
-            d_size[1] = math.floor((d_size[1] - mk + 2*mp)/ms + 1)
-
+            d_size[0] = math.floor(((d_size[0] - mk + 2*mp)/ms) + 1)
+            d_size[1] = math.floor(((d_size[1] - mk + 2*mp)/ms) + 1)
+            
             in_channels = out_channels # Input is last output
 
         layers.append(nn.Flatten())

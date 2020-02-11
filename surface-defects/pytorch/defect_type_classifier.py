@@ -29,7 +29,7 @@ if device == 'cpu':
 
 ### Set up parameters
 # Directory with training images sorted as data_dir/defect and data_dir/no_defect
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/train"
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/training"
 num_epochs = 20
 batch_size = 25
 learning_rate = 0.0008
@@ -39,10 +39,10 @@ IMSZ = 150
 do_test = True # If we want to test at the end
 
 # If we are testing, directory for testing data folders in same format as training data
-test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/test"
+test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/training"
 
 # if we are testing, this is a single large image to cut up and test on (like what we would do to find where defects are in a total image)
-test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/Isaac_2_crop.png"
+test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/test_img/Isaac_2_crop.png"
 
 
 #### Load in the data and convert it to a grayscale tensor
@@ -55,8 +55,8 @@ conv = [10,30,90,180]
 conv_layers = np.empty([len(conv),7])
 for i in range(len(conv)):
     # Set up convolutional layers and maxpool layers based on the list above and also use:
-    # kernel_size=5, stride=1, padding=0, max_pool_kernel=2, max_pool_stride=2, max_pool_padding=0
-    conv_layers[i] = [conv[i], 5, 1, 0, 2, 2, 0]
+    # kernel_size=3, stride=1, padding=0, max_pool_kernel=2, max_pool_stride=2, max_pool_padding=0
+    conv_layers[i] = [conv[i], 3, 1, 0, 2, 2, 0]
 
 ### Set up a pre_filter that made defects easier to see visually
 pre_filter_weights = [[-5, -10, -5], [-10, 60, -10], [-5, -10, -5]];
@@ -106,7 +106,7 @@ for epoch in range(num_epochs):
         target = Variable(target).to(device)
         # ===================forward=====================
         output = model(img) # Get output
-        loss = lossFunc(output, target.float()) # calculate loss
+        loss = lossFunc(output, target) # calculate loss
         # ===================backward====================
         optimizer.zero_grad() # Clear old gradients
         loss.backward() # Calculate new gradients
