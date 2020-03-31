@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 # Updating to sort based on type of defect as well
 
 # How many images to generate and what size should they be
-num_imgs = 100
+num_imgs = 200
 img_size = [150, 150]
 # Defects are looked for in this order so last should be no defect
 # 4th number is 1 for alpha values
@@ -28,11 +28,14 @@ no_defect_index = 2
 
 # Path pointing to the folder that contains the large image and the defect map of the image
 # The defect map should be pure black where the defects are and should be named IMG_NAME_defects.png
-path = "/Users/isaaczachmann/Desktop/imgs/flash"
-img = "Isaac_2_crop" # Without extension
+path = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/imgs/"
+img = "Zach_2_crop" # Without extension
 
 # Where to save the output images
-out_dir = "/Users/isaaczachmann/Desktop/imgs/flash/test"
+out_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/binary/val"
+
+# Prefix in case we want to save multiple in the same location
+prefix = "z2"
 
 # Load the original image and the defect map
 og_img = io.imread(path + os.path.sep + img + ".png")
@@ -103,9 +106,6 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
             if torch.sum(torch.sum(TF.to_tensor(defect).permute(2,1,0) == torch.tensor(c), 2) == 4) > 9:
                 defect_type = j
                 break
-        # Make sure we found a defect type
-        if defect_type == -1:
-            raise Exception("Error: Could not determine type for image", img)
 
         # If the input image contains a pure black it is (slmost certainly)
         # from being cliped during rotation, which is bad
@@ -113,6 +113,12 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
             clipped = True
         else:
             clipped = False
+
+        # Make sure we found a defect type
+        if defect_type == -1 and not clipped:
+            raise Exception("Error: Could not determine type for image", img)
+
+
 
         # Convert the images to tensors (different format)
         img = TF.to_tensor(img)
@@ -122,7 +128,7 @@ for i in range(num_imgs): # I keeps track of image number so we can save them wi
 
     # Once we exit the while loop we are ready to save our image into the correct folder
     # SAVE AS PNG! jpg has losses and it looks bad when it is loaded again later
-    torchvision.utils.save_image(img, out_dir + os.sep + defect_names[defect_type] + os.sep + str(i) + ".png")
+    torchvision.utils.save_image(img, out_dir + os.sep + defect_names[defect_type] + os.sep + prefix + str(i) + ".png")
     num_defects[defect_type] = num_defects[defect_type] + 1
 
     # Print our progress
