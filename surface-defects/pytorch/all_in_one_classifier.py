@@ -19,6 +19,7 @@ from image_segmentation import SegmentedImage
 import gc
 import sys
 from show_defects import show_defects
+import torchvision
 
 #### If a GPU is available its probably faster so use that. If it isnt go ahead and use CPU
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -29,10 +30,10 @@ if device == 'cpu':
 
 ### Set up parameters
 # Directory with training images sorted as data_dir/defect and data_dir/no_defect
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/training"
-num_epochs = 500
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/training"
+num_epochs = 2000
 batch_size = 25
-learning_rate = 0.0005
+learning_rate = 0.0004
 n_classes = 3
 # Use square images with IMSZ width and height
 IMSZ = 150
@@ -40,7 +41,7 @@ do_test = True # If we want to test at the end
 
 # If we are testing, directory for testing data folders in same format as training data
 # Also used for validation
-test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/testing"
+test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/testing"
 
 # if we are testing, this is a single large image to cut up and test on (like what we would do to find where defects are in a total image)
 test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/Isaac_2_crop.png"
@@ -56,7 +57,7 @@ val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, nu
 
 ### Set up our model
  # Number of channels for each convolutional layer, and length of list is how many convolutional layers
-conv = [20,40,80,160,320,640]
+conv = [5,10,20,30,30]
 conv_layers = np.empty([len(conv),7])
 for i in range(len(conv)):
     # Set up convolutional layers and maxpool layers based on the list above and also use:
@@ -75,13 +76,15 @@ pre_filter.weight.requires_grad = True # Let the filter weights change during tr
 # Use 3 fully connected layers and 1 output layer. Fully connected connected
 # layers have 1000, 100, then 50 nodes. Output layer has 1 node
 # Use random rectified linear unit as the activation function (see doc)
-cnn = ConvolutionalNN([IMSZ, IMSZ, 1], conv_layers, np.asarray([5000,500,50]), n_classes, nn.RReLU)
+cnn = ConvolutionalNN([IMSZ - 1, IMSZ - 1, 1], conv_layers, np.asarray([500,50]), n_classes, nn.RReLU)
 cnn.init_weights(nn.init.calculate_gain) # Initialize wieghts
  # Add the pre filter + the convolutional nural network + sigmoid activation function to get the full model
  # Sigmoid activation makes output between -1 and 1
  # (maybe we should change labels to be -1 and 1 then)
-model = nn.Sequential(pre_filter, cnn, nn.Sigmoid())
+model = nn.Sequential(pre_filter, cnn)
 
+#model = torchvision.models.DenseNet(growth_rate=32, block_config=(6, 12, 24, 16),num_init_features=64, bn_size=4, drop_rate=0, num_classes=n_classes, memory_efficient=True)
+#model.features.conv0 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 
 
 # Print number of trainable model paraemters for debuging purposes
