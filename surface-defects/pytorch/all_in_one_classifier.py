@@ -19,6 +19,7 @@ from image_segmentation import SegmentedImage
 import gc
 import sys
 from show_defects import show_defects
+import torchvision
 
 # If a GPU is available its probably faster so use that. If it isnt go ahead and use CPU
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -29,10 +30,10 @@ if device == 'cpu':
 
 # Set up parameters
 # Directory with training images sorted as data_dir/defect and data_dir/no_defect
-data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/training"
-num_epochs = 500
+data_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/training"
+num_epochs = 2000
 batch_size = 25
-learning_rate = 0.0005
+learning_rate = 0.0004
 n_classes = 3
 # Use square images with IMSZ width and height
 IMSZ = 150
@@ -40,7 +41,7 @@ do_test = True  # If we want to test at the end
 
 # If we are testing, directory for testing data folders in same format as training data
 # Also used for validation
-test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/testing"
+test_dir = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/sorted/defect_type/testing"
 
 # if we are testing, this is a single large image to cut up and test on (like what we would do to find where defects are in a total image)
 test_img = "/home/isaac/Python/pytorch/AFRL-Capstone-2020/surface-defects/Defects/paper/flash/Isaac_2_crop.png"
@@ -62,6 +63,7 @@ val_dataloader = DataLoader(
 # Number of channels for each convolutional layer, and length of list is how many convolutional layers
 conv = [20, 40, 80, 160, 320, 640]
 conv_layers = np.empty([len(conv), 7])
+<< << << < HEAD
 for i in range(len(conv)):
     # Set up convolutional layers and maxpool layers based on the list above and also use:
     # kernel_size=3, stride=1, padding=0, max_pool_kernel=2, max_pool_stride=2, max_pool_padding=0
@@ -87,7 +89,7 @@ cnn.init_weights(nn.init.calculate_gain)  # Initialize wieghts
 # Add the pre filter + the convolutional nural network + sigmoid activation function to get the full model
 # Sigmoid activation makes output between -1 and 1
 # (maybe we should change labels to be -1 and 1 then)
-#model = nn.Sequential(pre_filter, cnn, nn.Sigmoid())
+#model = nn.Sequential(pre_filter, cnn)
 model = torch.hub.load('pytorch/vision:v0.5.0', 'densenet121', pretrained=True)
 
 
